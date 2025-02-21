@@ -6,6 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const { stdout, stderr } = require("process");
+const version = '1.0.0'
 
 const rl = readline.createInterface({
 	input: process.stdin,
@@ -266,10 +267,22 @@ function cleanDir() {
 	}
 }
 
-async function checkUpdate() {
-	const local = await execPromise('git rev-parse HEAD');
-	const remote = await execPromise('git rev-parse origin/main');
-	if(local !== remote) {
+async function goFiles() {
+	const url = "https://github.com/marichann/hahaha";
+	const gitVersion = JSON.parse(await gitFiles("https://raw.githubusercontent.com/marichann/hahaha/refs/heads/main/version.json"))
+	if (!fs.existsSync('.git')) {
+		intervals.push({ name: "files", interval: loading(`Cloning git repository`, 100, 0) })
+		await cleanDir();
+		try {
+			await execPromise(`git clone ${url} .`);
+		} catch (e) {
+			errConsole(`Error cloning: ${e}`);
+		}
+	} else if (version === gitVersion.version) {
+		clearLine(1);
+		sysConsole("No update.");
+	}
+	else {
 		intervals.push({ name: "files", interval: loading(`Updating repository`, 100, 0) });
 		try {
 			await execPromise('git reset --hard');
@@ -277,30 +290,6 @@ async function checkUpdate() {
 		} catch (e) {
 			errConsole(`Error updating: ${e}`);
 		}
-	} else {
-		sysConsole("Repository is up to date.");
-	}
-}
-async function goFiles() {
-	const url = "https://github.com/marichann/hahaha";
-	if (fs.existsSync('index.js')) {
-		fs.renameSync('index.js', 'index_backup.js');
-	}
-
-	if (fs.existsSync('.git')){
-		await checkUpdate();
-	} else {
-		intervals.push({ name: "files", interval: loading(`Cloning git repository`, 100, 0)})
-		await cleanDir();
-		try {
-			await execPromise(`git clone ${url} .`);
-		} catch (e) {
-			errConsole(`Error cloning: ${e}`);
-		}
-	}
-
-	if (fs.existsSync('index_backup.js')) {
-		fs.renameSync('index_backup.js', 'index.js'); 
 	}
 }
 
