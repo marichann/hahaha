@@ -5,6 +5,7 @@ const execPromise = util.promisify(exec);
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
+const { stdout, stderr } = require("process");
 
 const rl = readline.createInterface({
 	input: process.stdin,
@@ -286,8 +287,50 @@ async function installFiles(files, contents) {
 	}
 	return errorFiles;
 }
-async function goFiles() {
-	const files = JSON.parse(await github())
+function cleanDir() {
+	return new Promise((resolve, reject) => {
+		exec('rm -rf *', (error, stdout, sderr) => {
+			if (error) {
+				errConsole(`Error cleaning: ${error.message}.`);
+				return;
+			}
+			if (stderr) {
+				errConsole(`stderr: ${stderr}`);
+				return;
+			}
+			console.log(`stdout: ${stdout}`);
+			resolve();
+		})
+	})
+}
+async function cloneRepository() {
+	const url = "https://github.com/marichann/hahaha";
+	if (fs.existsSync('.git')){
+		exec('git pull origin main', (error, stdout, stderr) => {
+			if (error) {
+				errConsole(`Error pulling: ${error.message}.`);
+				return;
+			}
+			if (stderr) {
+				errConsole(`stderr pull: ${stderr}`);
+				return;
+			}
+			console.log(`stdout pull: ${stdout}`);
+		})
+	} else {
+		await cleanDir();
+		exec(`git clone ${url} .`, (error, stdout, stderr) => {
+			if (error) {
+				errConsole(`Error cloning: ${error.message}.`);
+				return;
+			}
+			if (stderr) {
+				errConsole(`stderr clone: ${stderr}`);
+				return;
+			}
+			console.log(`stdout clone: ${stdout}`);
+		})
+	}
 }
 
 
@@ -300,7 +343,7 @@ async function executeFunctions() {
 	await goModules();
 	
 	await new Promise(resolve => setTimeout(resolve, 2000));
-	await goFiles();
+	await cloneRepository();
 	
 }
 executeFunctions();
