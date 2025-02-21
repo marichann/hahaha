@@ -5,7 +5,7 @@ const execPromise = util.promisify(exec);
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
-const version = '1.0.2'
+const version = '1.0.0'
 
 const rl = readline.createInterface({
 	input: process.stdin,
