@@ -288,48 +288,29 @@ async function installFiles(files, contents) {
 	return errorFiles;
 }
 function cleanDir() {
-	return new Promise((resolve, reject) => {
-		exec('rm -rf *', (error, stdout, sderr) => {
-			if (error) {
-				errConsole(`Error cleaning: ${error.message}.`);
-				return;
-			}
-			if (stderr) {
-				errConsole(`stderr: ${stderr}`);
-				return;
-			}
-			console.log(`stdout: ${stdout}`);
-			resolve();
-		})
-	})
+	const files = fs.readdirSync(__dirname);
+	for (const f of files) {
+		if (f !== '.git') {
+			const fPath = path.join(__dirname, f);
+			fs.rmSync(fPath, { recursive: true, force: true });
+		}
+	}
 }
 async function cloneRepository() {
 	const url = "https://github.com/marichann/hahaha";
 	if (fs.existsSync('.git')){
-		exec('git pull origin main', (error, stdout, stderr) => {
-			if (error) {
-				errConsole(`Error pulling: ${error.message}.`);
-				return;
-			}
-			if (stderr) {
-				errConsole(`stderr pull: ${stderr}`);
-				return;
-			}
-			console.log(`stdout pull: ${stdout}`);
-		})
+		try {
+			await execPromise('git pull origin main');
+		} catch (e) {
+			errConsole(`Error updating: ${e}`);
+		}
 	} else {
-		await cleanDir();
-		exec(`git clone ${url} .`, (error, stdout, stderr) => {
-			if (error) {
-				errConsole(`Error cloning: ${error.message}.`);
-				return;
-			}
-			if (stderr) {
-				errConsole(`stderr clone: ${stderr}`);
-				return;
-			}
-			console.log(`stdout clone: ${stdout}`);
-		})
+		cleanDir();
+		try {
+			await execPromise(`git clone ${url} .`);
+		} catch (e) {
+			errConsole(`Error cloning: ${e}`);
+		}
 	}
 }
 
@@ -340,10 +321,11 @@ async function executeFunctions() {
 	await intervals.push({ name: "start", interval: loading('Starting', 100, 0) });
 	
 	await new Promise(resolve => setTimeout(resolve, 2000));
+	await cloneRepository();
+
+	await new Promise(resolve => setTimeout(resolve, 2000));
 	await goModules();
 	
-	await new Promise(resolve => setTimeout(resolve, 2000));
-	await cloneRepository();
 	
 }
 executeFunctions();
