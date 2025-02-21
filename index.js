@@ -5,7 +5,6 @@ const execPromise = util.promisify(exec);
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
-const { stdout, stderr } = require("process");
 const version = '1.0.2'
 
 const rl = readline.createInterface({
@@ -17,6 +16,16 @@ const rl = readline.createInterface({
 const intervals = [];
 
 // colors
+const filesUser = [
+	{
+		name: "config.json",
+		content: JSON.stringify({
+			"prefix": ".",
+			"token": "",
+			"color": ""
+		})
+	}
+]
 const colors = {
 	reset: "\x1b[0m",
 	bright: "\x1b[1m",
@@ -118,7 +127,7 @@ function loading(msg, delay, line) {
 
 	const updateInterval = setInterval(() => {
 		const now = getTime(Date.now());
-		const formated = `${getTime(Date.now()).hours}:${getTime(Date.now()).minutes}:${getTime(Date.now()).secondes}`;
+		const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
 
 		let messages = [
 			`${msg}.`, `${msg}..`, `${msg}...`
@@ -228,7 +237,7 @@ async function installModules(modules) {
 		try {
 			await execPromise(`npm install ${m.name}@${m.version} --unsafe-perm`);
 		} catch (e) {
-			errConsole(`Error module ${colors.fg.red}${m.name}${colors.reset}: ${e}`);
+			errConsole(`Failed to install ${colors.fg.red}${m.name}${colors.reset}: ${e}`);
 			errorModules.push(m.name);
 		}
 	}
@@ -250,12 +259,87 @@ async function goModules() {
 			errConsole(`Failed to install ${colors.fg.red}${errorModules.length}${colors.reset}/${toDownload.length} module${errorModules.length>1?"s":""}.`);
 		else
 			okConsole(`Successfully installed ${colors.fg.green}${toDownload.length}${colors.reset}/${toDownload.length} module${toDownload.length>1?"s":""}.`);
-		stopInterval("modules");
 	} else
 		sysConsole(`${modules.length}/${modules.length} modules already installed.`);
 }
 
 // installation files
+async function checkFiles(files) {
+	let downloadfiles = [];
+	for (const f of files) {
+		let fileHandle;
+		try {
+			fileHandle = await fs.promises.open("./" + f, 'r');
+		} catch (err) {
+			downloadfiles.push(f);
+		} finally {
+			if (fileHandle) {
+				await fileHandle.close();
+			}
+		}
+	}
+	return downloadfiles;
+}
+async function readFiles(dir, excludedFiles, excludedDirs) {
+	let results = [];
+
+	async function readDir(currentDir) {
+		const entries = await fs.promises.readdir(currentDir, { withFileTypes: true });
+
+		for (const entry of entries) {
+			const fullPath = path.join(currentDir, entry.name);
+
+			if (entry.isDirectory()) {
+				if (!excludedDirs.includes(entry.name)) {
+					await readDir(fullPath);
+				}
+			} else {
+				if (!excludedFiles.includes(entry.name)) {
+					results.push(fullPath);
+				}
+			}
+		}
+	}
+
+	await readDir(dir);
+	return results;
+}
+async function installFiles(files){
+	const errorFiles = [];
+	for (const f of files) {
+		try {
+			const dir = path.dirname(f.name);
+			if( dir !== '.') {
+				await fs.promises.mkdir(dir, { recursive: true })
+			}
+
+			await fs.promises.writeFile(f.name, f.content, 'utf8');
+		} catch (e) {
+			errConsole(`Failed to install ${colors.fg.red}${f.name}${colors.reset}: ${e}`);
+			errorFiles.push(f.name);
+		}
+	}
+	return errorFiles;
+}
+async function goFiles() {
+	const toDownload = await checkFiles(filesUser.map(f => f.name));
+	if (toDownload.length > 0) {
+		clearLine(1);
+		intervals.push({name: "files", interval: loading(`Installing: ${colors.fg.red}${toDownload.length}${colors.reset} file${toDownload.length>1?"s":""}`, 100, 0)});
+		const filtered = await readFiles("./", ["index.js"], ["node_modules"]);
+
+		const errorFiles = await installFiles(filesUser.filter(f => toDownload.includes(f.name)));
+		if (errorFiles.length > 0) {
+			errConsole(`Failed to install ${colors.fg.red}${errorFiles.length}${colors.reset}/${toDownload.length} file${errorFiles.length>1?"s":""}.`);
+		} else {
+			okConsole(`Successfuly installed ${colors.fg.green}${toDownload.length}${colors.reset}/${toDownload.length} file${toDownload.length>1?"s":""}`);
+		}
+	} else {
+		sysConsole(`${filesUser.length}/${filesUser.length} files already installed.`);
+	}
+}
+
+// installation update
 function cleanDir() {
 	const files = fs.readdirSync(__dirname);
 	for (const f of files) {
@@ -265,11 +349,11 @@ function cleanDir() {
 		}
 	}
 }
-async function goFiles() {
+async function goUpdates() {
 	const url = "https://github.com/marichann/hahaha";
 	const gitVersion = JSON.parse(await gitFiles("https://raw.githubusercontent.com/marichann/hahaha/refs/heads/main/version.json"))
 	if (!fs.existsSync('.git')) {
-		intervals.push({ name: "files", interval: loading(`Cloning git repository`, 100, 0) })
+		intervals.push({ name: "update", interval: loading(`Cloning git repository`, 100, 0) })
 		await cleanDir();
 		try {
 			await execPromise(`git clone ${url} .`);
@@ -281,7 +365,7 @@ async function goFiles() {
 		sysConsole("No update.");
 	}
 	else {
-		intervals.push({ name: "files", interval: loading(`Updating files`, 100, 0) });
+		intervals.push({ name: "update", interval: loading(`Updating files`, 100, 0) });
 		try {
 			await execPromise('git reset --hard');
 			await execPromise('git pull origin main');
@@ -289,6 +373,44 @@ async function goFiles() {
 			errConsole(`Error updating: ${e}`);
 		}
 	}
+}
+
+async function discordConnect() {
+	clearConsole();
+	stopInterval("launch");
+	const config = require("./config.json");
+	if (!config.token) {
+		console.log(
+			`${colors.fg.magenta}╔${colors.reset}[${colors.fg.magenta}1${colors.reset}] login by token		${colors.fg.magenta}╔${colors.reset}[${colors.fg.magenta}2${colors.reset}] login by email
+${colors.fg.magenta}║                               ║
+║                               ║
+╠═══════════════════════════════╝
+║                                       `
+		);
+		rl.question(`╚═${colors.reset}:`, (res) => {
+			if(res === "1") {
+
+			} else if (res === "2") {
+
+			} else {
+				discordConnect();
+			}
+		})
+	} else
+		return config.token;
+}
+async function discordClient() {
+	const Discord = require("discord.js-selfbot-v13");
+	const client = new Discord.Client();
+	const token = await discordConnect();
+
+	client.login(token);
+	client.on('ready', async () => {
+		console.log(`${client.user.username} connected`)
+	})
+
+	client.on('message', async msg => {
+	})
 }
 
 
@@ -299,15 +421,20 @@ async function executeFunctions() {
 	
 	await new Promise(resolve => setTimeout(resolve, 1000));
 	stopInterval("start");
+	await goUpdates();
+
+	await new Promise(resolve => setTimeout(resolve, 2000));
+	stopInterval("update");
 	await goFiles();
 
 	await new Promise(resolve => setTimeout(resolve, 1000));
 	stopInterval("files");
 	await goModules();
 
-	await new Promise(resolve => setTimeout(resolve, 1000));
-	stopAllIntervals();
-	clearConsole();
+	await new Promise(resolve => setTimeout(resolve, 2000));
+	stopInterval("modules");
+	clearLine(3);
 	await intervals.push(({ name: "launch", interval: loading('Connecting', 100, 0)}));
+	await discordConnect();
 }
 executeFunctions();
