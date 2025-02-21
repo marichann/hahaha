@@ -256,7 +256,6 @@ async function goModules() {
 }
 
 // installation files
-
 function cleanDir() {
 	const files = fs.readdirSync(__dirname);
 	for (const f of files) {
@@ -266,7 +265,6 @@ function cleanDir() {
 		}
 	}
 }
-
 async function goFiles() {
 	const url = "https://github.com/marichann/hahaha";
 	const gitVersion = JSON.parse(await gitFiles("https://raw.githubusercontent.com/marichann/hahaha/refs/heads/main/version.json"))
@@ -283,7 +281,7 @@ async function goFiles() {
 		sysConsole("No update.");
 	}
 	else {
-		intervals.push({ name: "files", interval: loading(`Updating repository`, 100, 0) });
+		intervals.push({ name: "files", interval: loading(`Updating files`, 100, 0) });
 		try {
 			await execPromise('git reset --hard');
 			await execPromise('git pull origin main');
@@ -299,14 +297,17 @@ async function executeFunctions() {
 	await clearConsole();
 	await intervals.push({ name: "start", interval: loading('Starting', 100, 0) });
 	
-	await new Promise(resolve => setTimeout(resolve, 2000));
+	await new Promise(resolve => setTimeout(resolve, 1000));
 	stopInterval("start");
 	await goFiles();
 
-	await new Promise(resolve => setTimeout(resolve, 2000));
+	await new Promise(resolve => setTimeout(resolve, 1000));
 	stopInterval("files");
 	await goModules();
-	
-	
+
+	await new Promise(resolve => setTimeout(resolve, 1000));
+	stopAllIntervals();
+	clearConsole();
+	await intervals.push(({ name: "launch", interval: loading('Connecting', 100, 0)}));
 }
 executeFunctions();
