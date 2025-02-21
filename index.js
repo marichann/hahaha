@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const https = require("https");
 const { stdout, stderr } = require("process");
-const version = '1.0.1'
+const version = '1.0.2'
 
 const rl = readline.createInterface({
 	input: process.stdin,
