@@ -360,7 +360,7 @@ async function goUpdates() {
 		} catch (e) {
 			errConsole(`Error cloning: ${e}`);
 		}
-	} else if (version === gitVersion.version) {
+	} else if (version === gitVersion.version && fs.existsSync('./package.json')) {
 		clearLine(1);
 		sysConsole("No update.");
 	}
