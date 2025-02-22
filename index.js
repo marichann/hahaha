@@ -5,6 +5,8 @@ const execPromise = util.promisify(exec);
 const path = require("path");
 const fs = require("fs");
 const https = require("https");
+const os = require("os");
+const { stdout } = require("process");
 const version = '1.0.0'
 
 const rl = readline.createInterface({
@@ -24,6 +26,10 @@ const filesUser = [
 			"token": "",
 			"color": ""
 		})
+	},
+	{
+		name: "logs.txt",
+		content: ""
 	}
 ]
 const colors = {
@@ -36,16 +42,19 @@ const colors = {
 	hidden: "\x1b[8m",
 
 	fg: {
-		black: "\x1b[30m",
 		red: "\x1b[31m",
 		green: "\x1b[32m",
 		yellow: "\x1b[33m",
 		blue: "\x1b[34m",
 		magenta: "\x1b[35m",
 		cyan: "\x1b[36m",
-		white: "\x1b[37m",
 		gray: "\x1b[90m",
-		crimson: "\x1b[38m"
+		lightRed: "\x1b[91m",
+		lightGreen: "\x1b[92m",
+		lightYellow: "\x1b[93m",
+		lightBlue: "\x1b[94m",
+		lightMagenta: "\x1b[95m",
+		lightCyan: "\x1b[96m"
 	},
 	bg: {
 		black: "\x1b[40m",
@@ -82,21 +91,36 @@ function getTime(timestamp) {
 	};
 }
 
+function randomColor(){
+	const config = require("./config.json");
+	const randomColor = Object.values(colors.fg)[Math.floor(Math.random() * Object.values(colors.fg).length)]
+	if (Object.keys(colors.fg).map(k => k.toLowerCase()).includes(config.color.toLowerCase()))
+		return colors.fg[Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase())];
+	else
+		return randomColor;
+	
+}
 // console colors infos
 function okConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
-	console.log(`[${colors.fg.green}${formated}${colors.reset}] [${colors.fg.green}+${colors.reset}] ${text}`);
+	process.stdout.write(`\n[${colors.fg.green}${formated}${colors.reset}] [${colors.fg.green}+${colors.reset}] ${text}`);
+	if(fs.existsSync('./logs.txt'))
+		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
 }
 function errConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
-	console.log(`[${colors.fg.red}${formated}${colors.reset}] [${colors.fg.red}-${colors.reset}] ${text}`);
+	process.stdout.write(`\n[${colors.fg.red}${formated}${colors.reset}] [${colors.fg.red}-${colors.reset}] ${text}`);
+	if (fs.existsSync('./logs.txt'))
+		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
 }
 function sysConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
-	console.log(`[${colors.fg.blue}${formated}${colors.reset}] [${colors.fg.blue}|${colors.reset}] ${text}`);
+	process.stdout.write(`\n[${colors.fg.blue}${formated}${colors.reset}] [${colors.fg.blue}|${colors.reset}] ${text}`);
+	if (fs.existsSync('./logs.txt'))
+		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
 }
 
 // intervalles
@@ -183,10 +207,9 @@ function getCursor() {
 }
 
 // restart 
-async function restart(rl, client) {
+async function restart(client) {
 	rl.close();
 	await client.destroy();
-	await client.commands.clear();
 	const index = process.argv[1];
 	const args = process.argv.slice(2);
 	const proc = spawn('node', [index, ...args], {
@@ -375,44 +398,341 @@ async function goUpdates() {
 	}
 }
 
+
+// discord
+async function discordAuth(email, password, code = null, ticket = null) {
+	const fetch = (await import("node-fetch")).default;
+	let data = {
+		login: email,
+		password: password,
+		undelete: false,
+		captcha_key: null,
+		login_source: null,
+		gift_code_sku_id: null
+	};
+	let path = '/api/v9/auth/login';
+	if(code) {
+		data = {
+			code: code,
+			ticket: ticket,
+			login_source: null,
+			gift_code_sku_id: null
+		}
+		
+		path = '/api/v9/auth/mfa/totp';
+	}
+	const url = `https://discord.com${path}`;
+	const headers = {
+		'Content-Type': 'application/json',
+		"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36",
+		'x-fingerprint': '715952977180885042.yskHI7mK4iZWhTX7iXlXIcDovRc',
+		'x-super-properties': Buffer.from(JSON.stringify({
+			os: 'Windows',
+			browser: 'Chrome',
+			device: '',
+			browser_user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.61 Safari/537.36',
+			browser_version: '83.0.4103.61',
+			os_version: '10',
+			referring_domain: 'discord.com',
+			referrer_current: '',
+			referring_domain_current: '',
+			release_channel: 'stable',
+			client_build_number: 60856,
+			client_event_source: null
+		}), 'utf-8').toString('base64'),
+		'cookie': '__cfduid=d638ccef388c4ca5a94c97c547c7f0d9e1598555308; __cfruid=4d17c1a957fba3c0a08c74ea83114af675f7ef19-1598796039;'
+	};
+	try {
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: headers,
+			body: JSON.stringify(data)
+		});
+		const res = await response.json();
+		if (response.ok)
+			return res;
+		else
+			return res.message;
+	} catch (e) {
+		return e;
+	}
+}
 async function discordConnect() {
+	const Discord = require("discord.js-selfbot-v13");
+	const client = new Discord.Client();
 	clearConsole();
 	stopInterval("launch");
 	const config = require("./config.json");
-	if (!config.token) {
+	const fetch = (await import("node-fetch")).default;
+	const user = await fetch(`https://discord.com/api/v9/users/@me`, {
+		method: 'GET',
+		headers: {
+			"authorization": config.token,
+			"Content-Type": "application/json"
+		}
+	})
+	if (!config.token || !user.ok) {
 		console.log(
-			`${colors.fg.magenta}╔${colors.reset}[${colors.fg.magenta}1${colors.reset}] login by token		${colors.fg.magenta}╔${colors.reset}[${colors.fg.magenta}2${colors.reset}] login by email
-${colors.fg.magenta}║                               ║
-║                               ║
-╠═══════════════════════════════╝
-║                                       `
-		);
-		rl.question(`╚═${colors.reset}:`, (res) => {
-			if(res === "1") {
-
+			`	[${colors.fg.magenta}1${colors.reset}] login by token		[${colors.fg.magenta}2${colors.reset}] login by email
+			
+			`);
+		rl.question(`-> `, (res) => {
+			if (res === "1") {
+				clearConsole();
+				rl.question(`token\n-> `, async (r) => {
+					const user = await fetch(`https://discord.com/api/v9/users/@me`, {
+						method: 'GET',
+						headers: {
+							"authorization": r,
+							"Content-Type": "application/json"
+						}
+					})
+					if(!user.ok)
+						discordConnect();
+					else {
+						config.token = r;
+						fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+							if (err) errConsole(`Error file: ${err}`);
+						})
+						restart(client);
+					}
+				})
 			} else if (res === "2") {
-
+				clearConsole();
+				rl.question(`email\n-> `, email => {
+					rl.question(`password\n-> `, async (password) => {
+						const response = await discordAuth(email, password);
+						if(response.ticket) {
+							rl.question(`A2F code\n-> `, async a2f => {
+								const ares = await discordAuth(email, password, a2f, response.ticket);
+								if(!ares.token)
+									discordConnect();
+								else {
+									config.token = ares.token;
+									fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+										if (err) errConsole(`Error file: ${err}`);
+									})
+									restart(client);
+								}
+							})
+						} else if (!response.token)
+							discordConnect();
+						else {
+							config.token = response.token;
+							fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+								if (err) errConsole(`Error file: ${err}`);
+							})
+							restart(client);
+						}
+					})
+				})
 			} else {
 				discordConnect();
 			}
 		})
 	} else
-		return config.token;
+		client.login(config.token);
+	return client;
 }
-async function discordClient() {
+
+
+// ascii
+async function textToAscii(text, font) {
+	const figlet = require("figlet");
+	return new Promise((resolve, reject) => {
+		figlet.text(
+			text,
+			{
+				font: font,
+				horizontalLayout: "default",
+				verticalLayout: "default",
+				width: 80,
+				whitespaceBreak: true,
+			},
+			(err, data) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve(data);
+			}
+		);
+	});
+}
+function plaform(platform) {
+	switch (platform) {
+		case 'aix':
+			return 'AIX';
+		case 'darwin':
+			return 'macOS';
+		case 'freebsd':
+			return 'FreeBSD';
+		case 'linux':
+			return 'Linux';
+		case 'openbsd':
+			return 'OpenBSD';
+		case 'sunos':
+			return 'SunOS';
+		case 'win32':
+			return 'Windows';
+		default:
+			return 'Unknown';
+	}
+}
+async function sizedir(dir) {
+	let size = 0;
+	const files = await fs.promises.readdir(dir);
+	for (const file of files) {
+		const filePath = path.join(dir, file);
+		const stats = await fs.promises.stat(filePath);
+		if (stats.isFile()) {
+			size += stats.size;
+		} else if (stats.isDirectory()) {
+			size += await sizedir(filePath);
+		}
+	}
+
+	return size;
+}
+async function osInfo(dir) {
+	const size = await sizedir(dir);
+	const files = await fs.promises.readdir(dir);
+	return {
+		filesNumber: (files.length),
+		dirSize: (size / (1024 ** 2)).toFixed(2),
+		osPlatform: plaform(os.platform()),
+		totalMemory: `${(os.totalmem() / (1024 ** 3)).toFixed(2)}`,
+		freeMemory: `${(os.freemem() / (1024 ** 3)).toFixed(2)}`
+	}
+}
+
+async function panel(client, options, isColor, menu, length) {
+	const fetch = (await import("node-fetch")).default;
+	const config = require("./config.json");
+	const asciistart = await textToAscii("OHAYO", "bloody");
+	const asciisplited = asciistart.split("\n");
+	function spaces(x, y) {
+		return " ".repeat(Math.round((x - y) / 2));
+	}
+	const asciifinal = asciisplited.map(a => spaces(100, a.length) + a).join("\n");
+	const dir = path.resolve(__dirname, "./");
+
+	const texts = [
+		`${client.user.username}${colors.reset}`,
+		`${(await osInfo(dir)).dirSize}${colors.reset} MB | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).osPlatform}${colors.reset} | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).freeMemory}${colors.reset}GO/${isColor ? isColor : randomColor()}${(await osInfo(dir)).totalMemory}${colors.reset}GO`,
+		`${config.prefix}${colors.reset} | ${isColor ? isColor : randomColor()}${Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) ? Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) : (!config.color?"RANDOM":"RAINBOW")}${colors.reset}\n`
+	]
+	clearConsole()
+	console.log(`${isColor ? isColor : randomColor()}${asciifinal}${colors.reset}\n`)
+	console.log(" ".repeat((100 - 16) / 2) + "* By Mari-chan *\n\n");
+	
+	const len = texts[1].length-31
+	for (t of texts)
+		console.log(`${" ".repeat(Math.round(100 - (len+4))/2)}|${isColor ? isColor : randomColor()}+${colors.reset}| ${isColor ? isColor : randomColor()}${t}`);
+	console.log(`${" ".repeat((100 - length) / 2) }${menu}\n\n`);
+	console.log(" ".repeat((100 - options.length) / 2) + options.replace(/(\d)/g, `${isColor ? isColor : randomColor()}$1${colors.reset}`));
+	console.log("▂".repeat(100) + "\n");
+}
+
+async function menu(client) {
+	const config = require("./config");
+	const color = config.color ? null : randomColor()
+
+	const principalOptions = "[1] config    [2] tools    [3] restart    [0] clearLogs";
+	const principalPhrase = "Select an option";
+	await panel(client, principalOptions, color, `${color ? color : randomColor()}->${colors.reset} ${principalPhrase} ${color ? color : randomColor()}<-${colors.reset}`, principalPhrase.length+6);
+	await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async a => {
+		switch (a) {
+			case '1':
+				async function configMenu(){
+					const configOptions = "[1] prefix    [2] color    [3] token    [0] back";
+					const configPhrase = "Customize the settings";
+					await panel(client, configOptions, color, `${color ? color : randomColor()}->${colors.reset} ${configPhrase} ${color ? color : randomColor()}<-${colors.reset}`, configPhrase.length+6);
+					await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async b => {
+						switch (b) {
+							case '1':
+								async function prefixMenu(){
+									const prefixOptions = "[0] back";
+									const prefixPhrase = "Enter a new prefix";
+									await panel(client, prefixOptions, color, `${color ? color : randomColor()}->${colors.reset} ${prefixPhrase} ${color ? color : randomColor()}<-${colors.reset}`, prefixPhrase.length+6);
+									await rl.question(`${color ?color: randomColor()}-> ${colors.reset}`, async c => {
+										if(c === '0')
+											configMenu();
+										else {
+											config.prefix = c;
+											fs.writeFile('./config.json', JSON.stringify(config, null, 2), (e) => {
+												if (e) errConsole(`Error file: ${e}`);
+											})
+											menu(client);
+										}
+									})
+								}
+								prefixMenu()
+								break;
+							case '2':
+								async function colorMenu(){
+									const colorOptions = "[1] colors    [0] back";
+									const colorPhrase = "Enter a new color";
+									await panel(client, colorOptions, color, `${color ? color:randomColor()}->${colors.reset} ${colorPhrase} ${color?color:randomColor()}<-${colors.reset}`, colorPhrase.length+6);
+									await rl.question(`${color?color:randomColor()}-> ${colors.reset}`, async c => {
+										if(c === '0')
+											configMenu();
+										else if (c === '1') {
+											await colorMenu();
+											await sysConsole(`${Object.keys(colors.fg).map(c => `${color ? color : randomColor()}${c}${colors.reset}`)},${color ? color : randomColor()}random${colors.reset},${color ? color : randomColor()}rainbow${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
+										} else if (Object.keys(colors.fg).map(k => k.toUpperCase()).includes(c.toUpperCase()) || (c.toUpperCase() === "RAINBOW") || (c.toUpperCase() === "RANDOM")) {
+											config.color = c.toUpperCase() === "RANDOM"?"":c;
+											fs.writeFile('./config.json', JSON.stringify(config, null, 2), (e) => {
+												if (e) errConsole(`Error file ${e}`);
+											})
+											menu(client);
+										} else
+											colorMenu();
+									})
+								}
+								colorMenu()
+								break;
+							case '3':
+								config.token = "";
+								fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+									if (err) errConsole(`Error file: ${err}`);
+								})
+								discordConnect();
+								break;
+							case '0':
+								menu(client);
+								break;
+							default:
+								configMenu();
+						}
+					})
+				}
+				configMenu();
+				break;
+			case '2':
+				menu(client);
+				break;
+			case '3':
+				restart(client);
+				break;
+			default:
+				menu(client);
+		}
+	})
+	return color;
+}
+
+// discord functions
+async function discordConnected(client) {
 	const Discord = require("discord.js-selfbot-v13");
-	const client = new Discord.Client();
-	const token = await discordConnect();
+	const fetch = (await import("node-fetch")).default;
 
-	client.login(token);
 	client.on('ready', async () => {
-		console.log(`${client.user.username} connected`)
+		const color = await menu(client);
 	})
 
-	client.on('message', async msg => {
-	})
+	
 }
-
 
 // starting
 async function executeFunctions() {
@@ -435,6 +755,8 @@ async function executeFunctions() {
 	stopInterval("modules");
 	clearLine(3);
 	await intervals.push(({ name: "launch", interval: loading('Connecting', 100, 0)}));
-	await discordConnect();
+	const client = await discordConnect();
+
+	await discordConnected(client);
 }
 executeFunctions();
