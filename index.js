@@ -20,7 +20,7 @@ const intervals = [];
 // colors
 const filesUser = [
 	{
-		name: "config.json",
+		name: "files/config.json",
 		content: JSON.stringify({
 			"prefix": ".",
 			"token": "",
@@ -28,7 +28,15 @@ const filesUser = [
 		})
 	},
 	{
-		name: "logs.txt",
+		name: "logs/logs.txt",
+		content: ""
+	},
+	{
+		name: "logs/messages.txt",
+		content: ""
+	},
+	{
+		name: "logs/activity.txt",
 		content: ""
 	}
 ]
@@ -92,7 +100,7 @@ function getTime(timestamp) {
 }
 
 function randomColor(){
-	const config = require("./config.json");
+	const config = require("./files/config.json");
 	const randomColor = Object.values(colors.fg)[Math.floor(Math.random() * Object.values(colors.fg).length)]
 	if (Object.keys(colors.fg).map(k => k.toLowerCase()).includes(config.color.toLowerCase()))
 		return colors.fg[Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase())];
@@ -105,22 +113,22 @@ function okConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
 	process.stdout.write(`\n[${colors.fg.green}${formated}${colors.reset}] [${colors.fg.green}+${colors.reset}] ${text}`);
-	if(fs.existsSync('./logs.txt'))
-		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
+	if(fs.existsSync('./logs/logs.txt'))
+		fs.appendFileSync('./logs/logs.txt', `${formated} | ${text.replace(/\x1B\[[0-9;]*m/g, "") }\n`);
 }
 function errConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
 	process.stdout.write(`\n[${colors.fg.red}${formated}${colors.reset}] [${colors.fg.red}-${colors.reset}] ${text}`);
-	if (fs.existsSync('./logs.txt'))
-		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
+	if (fs.existsSync('./logs/logs.txt'))
+		fs.appendFileSync('./logs.txt', `${formated} | ${text.replace(/\x1B\[[0-9;]*m/g, "") }\n`);
 }
 function sysConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
 	process.stdout.write(`\n[${colors.fg.blue}${formated}${colors.reset}] [${colors.fg.blue}|${colors.reset}] ${text}`);
-	if (fs.existsSync('./logs.txt'))
-		fs.appendFileSync('./logs.txt', `${formated} | ${text}\n`);
+	if (fs.existsSync('./logs/logs.txt'))
+		fs.appendFileSync('./logs/logs.txt', `${formated} | ${text.replace(/\x1B\[[0-9;]*m/g, "") }\n`);
 }
 
 // intervalles
@@ -208,6 +216,7 @@ function getCursor() {
 
 // restart 
 async function restart(client) {
+	sysConsole("Restarting.")
 	rl.close();
 	await client.destroy();
 	const index = process.argv[1];
@@ -462,7 +471,7 @@ async function discordConnect() {
 	const client = new Discord.Client();
 	clearConsole();
 	stopInterval("launch");
-	const config = require("./config.json");
+	const config = require("./files/config.json");
 	const fetch = (await import("node-fetch")).default;
 	const user = await fetch(`https://discord.com/api/v9/users/@me`, {
 		method: 'GET',
@@ -491,7 +500,7 @@ async function discordConnect() {
 						discordConnect();
 					else {
 						config.token = r;
-						fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+						fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
 							if (err) errConsole(`Error file: ${err}`);
 						})
 						restart(client);
@@ -509,7 +518,7 @@ async function discordConnect() {
 									discordConnect();
 								else {
 									config.token = ares.token;
-									fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+									fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
 										if (err) errConsole(`Error file: ${err}`);
 									})
 									restart(client);
@@ -519,7 +528,7 @@ async function discordConnect() {
 							discordConnect();
 						else {
 							config.token = response.token;
-							fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+							fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
 								if (err) errConsole(`Error file: ${err}`);
 							})
 							restart(client);
@@ -608,7 +617,7 @@ async function osInfo(dir) {
 
 async function panel(client, options, isColor, menu, length) {
 	const fetch = (await import("node-fetch")).default;
-	const config = require("./config.json");
+	const config = require("./files/config.json");
 	const asciistart = await textToAscii("OHAYO", "bloody");
 	const asciisplited = asciistart.split("\n");
 	function spaces(x, y) {
@@ -620,7 +629,7 @@ async function panel(client, options, isColor, menu, length) {
 	const texts = [
 		`${client.user.username}${colors.reset}`,
 		`${(await osInfo(dir)).dirSize}${colors.reset} MB | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).osPlatform}${colors.reset} | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).freeMemory}${colors.reset}GO/${isColor ? isColor : randomColor()}${(await osInfo(dir)).totalMemory}${colors.reset}GO`,
-		`${config.prefix}${colors.reset} | ${isColor ? isColor : randomColor()}${Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) ? Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) : (!config.color?"RANDOM":"RAINBOW")}${colors.reset}\n`
+		`${config.prefix}${colors.reset} | ${isColor ? isColor : randomColor()}${Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) ? Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) : (!config.color ? "Random" : `${randomColor()}R${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${randomColor()}`)}${colors.reset}\n`
 	]
 	clearConsole()
 	console.log(`${isColor ? isColor : randomColor()}${asciifinal}${colors.reset}\n`)
@@ -630,29 +639,40 @@ async function panel(client, options, isColor, menu, length) {
 	for (t of texts)
 		console.log(`${" ".repeat(Math.round(100 - (len+4))/2)}|${isColor ? isColor : randomColor()}+${colors.reset}| ${isColor ? isColor : randomColor()}${t}`);
 	console.log(`${" ".repeat((100 - length) / 2) }${menu}\n\n`);
-	console.log(" ".repeat((100 - options.length) / 2) + options.replace(/(\d)/g, `${isColor ? isColor : randomColor()}$1${colors.reset}`));
+
+	const lenOptions = longestString(options).length;
+	await options.forEach(async o => {
+		console.log(" ".repeat((100 - lenOptions) / 2) + o.replace(/(\d)/g, `${isColor ? isColor : randomColor()}$1${colors.reset}`));
+	})
 	console.log("▂".repeat(100) + "\n");
 }
 
+function longestString(arr) {
+	return arr.reduce((a, b) => a.length >= b.length ? a : b, "");
+}
+
 async function menu(client) {
-	const config = require("./config");
+	const config = require("./files/config.json");
 	const color = config.color ? null : randomColor()
 
-	const principalOptions = "[1] config    [2] tools    [3] restart    [0] clearLogs";
+	const principalOptions = [
+		"[01]settings          [02]discord tools          [03]files manager          [04]tips",
+		"[05]api tools         [06]architecture           [07]discord server         [00]restart"
+	];
 	const principalPhrase = "Select an option";
 	await panel(client, principalOptions, color, `${color ? color : randomColor()}->${colors.reset} ${principalPhrase} ${color ? color : randomColor()}<-${colors.reset}`, principalPhrase.length+6);
 	await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async a => {
 		switch (a) {
 			case '1':
 				async function configMenu(){
-					const configOptions = "[1] prefix    [2] color    [3] token    [0] back";
+					const configOptions = ["[01]prefix settings          [02]color settings          [03]token swap          [00]back"];
 					const configPhrase = "Customize the settings";
 					await panel(client, configOptions, color, `${color ? color : randomColor()}->${colors.reset} ${configPhrase} ${color ? color : randomColor()}<-${colors.reset}`, configPhrase.length+6);
 					await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async b => {
 						switch (b) {
 							case '1':
 								async function prefixMenu(){
-									const prefixOptions = "[0] back";
+									const prefixOptions = ["[00]back"];
 									const prefixPhrase = "Enter a new prefix";
 									await panel(client, prefixOptions, color, `${color ? color : randomColor()}->${colors.reset} ${prefixPhrase} ${color ? color : randomColor()}<-${colors.reset}`, prefixPhrase.length+6);
 									await rl.question(`${color ?color: randomColor()}-> ${colors.reset}`, async c => {
@@ -660,7 +680,7 @@ async function menu(client) {
 											configMenu();
 										else {
 											config.prefix = c;
-											fs.writeFile('./config.json', JSON.stringify(config, null, 2), (e) => {
+											fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (e) => {
 												if (e) errConsole(`Error file: ${e}`);
 											})
 											menu(client);
@@ -671,7 +691,7 @@ async function menu(client) {
 								break;
 							case '2':
 								async function colorMenu(){
-									const colorOptions = "[1] colors    [0] back";
+									const colorOptions = ["[01]colors list          [00]back"];
 									const colorPhrase = "Enter a new color";
 									await panel(client, colorOptions, color, `${color ? color:randomColor()}->${colors.reset} ${colorPhrase} ${color?color:randomColor()}<-${colors.reset}`, colorPhrase.length+6);
 									await rl.question(`${color?color:randomColor()}-> ${colors.reset}`, async c => {
@@ -679,10 +699,10 @@ async function menu(client) {
 											configMenu();
 										else if (c === '1') {
 											await colorMenu();
-											await sysConsole(`${Object.keys(colors.fg).map(c => `${color ? color : randomColor()}${c}${colors.reset}`)},${color ? color : randomColor()}random${colors.reset},${color ? color : randomColor()}rainbow${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
+											await sysConsole(`${Object.keys(colors.fg).map(c => `${colors.fg[c]}${c}${colors.reset}`)},random${colors.reset},${color ? color : randomColor()}${randomColor()}r${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
 										} else if (Object.keys(colors.fg).map(k => k.toUpperCase()).includes(c.toUpperCase()) || (c.toUpperCase() === "RAINBOW") || (c.toUpperCase() === "RANDOM")) {
 											config.color = c.toUpperCase() === "RANDOM"?"":c;
-											fs.writeFile('./config.json', JSON.stringify(config, null, 2), (e) => {
+											fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (e) => {
 												if (e) errConsole(`Error file ${e}`);
 											})
 											menu(client);
@@ -694,7 +714,7 @@ async function menu(client) {
 								break;
 							case '3':
 								config.token = "";
-								fs.writeFile('./config.json', JSON.stringify(config, null, 2), (err) => {
+								fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
 									if (err) errConsole(`Error file: ${err}`);
 								})
 								discordConnect();
@@ -710,9 +730,47 @@ async function menu(client) {
 				configMenu();
 				break;
 			case '2':
-				menu(client);
+				async function discordToolMenu() {
+					const discordToolOptions = [
+						"[01]token spammer          [02]client manager          [03]discord infos          [04]automatic tools",
+						"[05]token checker          [06]backup tools            [00]back"
+					];
+					const discordToolPhrase = "Have fun with my discord tools";
+					await panel(client, discordToolOptions, color, `${color ? color:randomColor()}->${colors.reset} ${discordToolPhrase} ${color?color:randomColor()}<-${colors.reset}`, discordToolPhrase.length+6);
+					await rl.question(`${color?color:randomColor()}->${colors.reset} `, async (b) => {
+						switch (b) {
+							case '1':
+								discordToolMenu();
+								break;
+							case '2':
+								discordToolMenu();
+								break;
+							case '3':
+								discordToolMenu();
+								break;
+							case '4':
+								discordToolMenu();
+								break;
+							case '0':
+								menu(client);
+								break;
+							default:
+								toolMenu();
+						}
+					})
+				}
+				discordToolMenu();
 				break;
 			case '3':
+				menu(client);
+				break;
+			case '4':
+				menu(client);
+				break;
+			case '5':
+				menu(client);
+				break;
+			case '0':
 				restart(client);
 				break;
 			default:

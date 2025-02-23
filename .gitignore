@@ -3,3 +3,5 @@ package-lock.json
 config.json
 version.json
 logs.txt
+activity.txt
+messages.txt
