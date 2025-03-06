@@ -5,3 +5,6 @@ version.json
 logs.txt
 activity.txt
 messages.txt
+backups.json
+tokens.txt
+test.js

@@ -9,11 +9,6 @@ const os = require("os");
 const { stdout } = require("process");
 const version = '1.0.0'
 
-const rl = readline.createInterface({
-	input: process.stdin,
-	output: process.stdout,
-	prompt: ''
-});
 
 const intervals = [];
 
@@ -38,6 +33,14 @@ const filesUser = [
 	{
 		name: "logs/activity.txt",
 		content: ""
+	},
+	{
+		name: "files/tokens.txt",
+		content: ""
+	},
+	{
+		name: "files/backups.json",
+		content: JSON.stringify({})
 	}
 ]
 const colors = {
@@ -144,6 +147,32 @@ function stopAllIntervals(){
 	intervals.length = 0;
 }
 
+
+// realine question fonction
+
+function question(text, callback = null) {
+	let rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout
+	});
+
+	if (callback) {
+		rl.question(text, (answer) => {
+			rl.close();
+			callback(answer);
+		});
+	} else {
+		return new Promise((resolve) => {
+			rl.question(text, (answer) => {
+				rl.close();
+				resolve(answer);
+			});
+		});
+	}
+}
+
+
+
 // loading text
 function updateLine(line, text) {
 	process.stdout.write('\u001b[s');
@@ -217,7 +246,6 @@ function getCursor() {
 // restart 
 async function restart(client) {
 	sysConsole("Restarting.")
-	rl.close();
 	await client.destroy();
 	const index = process.argv[1];
 	const args = process.argv.slice(2);
@@ -485,60 +513,57 @@ async function discordConnect() {
 			`	[${colors.fg.magenta}1${colors.reset}] login by token		[${colors.fg.magenta}2${colors.reset}] login by email
 			
 			`);
-		rl.question(`-> `, (res) => {
-			if (res === "1") {
-				clearConsole();
-				rl.question(`token\n-> `, async (r) => {
-					const user = await fetch(`https://discord.com/api/v9/users/@me`, {
-						method: 'GET',
-						headers: {
-							"authorization": r,
-							"Content-Type": "application/json"
-						}
-					})
-					if(!user.ok)
-						discordConnect();
-					else {
-						config.token = r;
-						fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
-							if (err) errConsole(`Error file: ${err}`);
-						})
-						restart(client);
-					}
-				})
-			} else if (res === "2") {
-				clearConsole();
-				rl.question(`email\n-> `, email => {
-					rl.question(`password\n-> `, async (password) => {
-						const response = await discordAuth(email, password);
-						if(response.ticket) {
-							rl.question(`A2F code\n-> `, async a2f => {
-								const ares = await discordAuth(email, password, a2f, response.ticket);
-								if(!ares.token)
-									discordConnect();
-								else {
-									config.token = ares.token;
-									fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
-										if (err) errConsole(`Error file: ${err}`);
-									})
-									restart(client);
-								}
-							})
-						} else if (!response.token)
-							discordConnect();
-						else {
-							config.token = response.token;
-							fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
-								if (err) errConsole(`Error file: ${err}`);
-							})
-							restart(client);
-						}
-					})
-				})
-			} else {
+		const res = await question("-> ");
+		if (res === "1"){
+			clearConsole();
+			const token = await question("token\n-> ");
+			const user = await fetch(`https://discord.com/api/v9/users/@me`, {
+				method: 'GET',
+				headers: {
+					"authorization": token,
+					"Content-Type": "application/json"
+				}
+			})
+			if (!user.ok)
 				discordConnect();
+			else {
+				config.token = r;
+				fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
+					if (err) errConsole(`Error file: ${err}`);
+				})
+				restart(client);
 			}
-		})
+		} else if(res === "2") {
+			clearConsole();
+			const email = await question("email\n-> ");
+			const password = await question("password\n-> ");
+			const response = await discordAuth(email, password);
+			if (response.ticket) {
+				const a2f = await question("A2F code\n-> ");
+				const ares = await discordAuth(email, password, a2f, response.ticket);
+
+				if (!ares.token) {
+					discordConnect();
+				} else {
+					config.token = ares.token;
+					fs.writeFile("./files/config.json", JSON.stringify(config, null, 2), (err) => {
+						if (err) errConsole(`Error file: ${err}`);
+					});
+					restart(client);
+				}
+
+			} else if (!response.token) {
+				discordConnect();
+			} else {
+				config.token = response.token;
+				fs.writeFile("./files/config.json", JSON.stringify(config, null, 2), (err) => {
+					if (err) errConsole(`Error file: ${err}`);
+				});
+				restart(client);
+			}
+		} else {
+			discordConnect();
+		}
 	} else
 		client.login(config.token);
 	return client;
@@ -616,23 +641,25 @@ async function osInfo(dir) {
 }
 
 async function panel(client, options, isColor, menu, length) {
-	const fetch = (await import("node-fetch")).default;
 	const config = require("./files/config.json");
+	const dir = path.resolve(__dirname, "./");
+
 	const asciistart = await textToAscii("OHAYO", "bloody");
 	const asciisplited = asciistart.split("\n");
+
 	function spaces(x, y) {
 		return " ".repeat(Math.round((x - y) / 2));
 	}
-	const asciifinal = asciisplited.map(a => spaces(100, a.length) + a).join("\n");
-	const dir = path.resolve(__dirname, "./");
 
+	const asciifinal = asciisplited.map(a => spaces(100, a.length) + a).join("\n");
 	const texts = [
 		`${client.user.username}${colors.reset}`,
 		`${(await osInfo(dir)).dirSize}${colors.reset} MB | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).osPlatform}${colors.reset} | ${isColor ? isColor : randomColor()}${(await osInfo(dir)).freeMemory}${colors.reset}GO/${isColor ? isColor : randomColor()}${(await osInfo(dir)).totalMemory}${colors.reset}GO`,
 		`${config.prefix}${colors.reset} | ${isColor ? isColor : randomColor()}${Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) ? Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase()) : (!config.color ? "Random" : `${randomColor()}R${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${randomColor()}`)}${colors.reset}\n`
 	]
+
 	clearConsole()
-	console.log(`${isColor ? isColor : randomColor()}${asciifinal}${colors.reset}\n`)
+	console.log(`${asciifinal.split('').map(c => `${ isColor? isColor: randomColor() }${c}${colors.reset}`).join("")}${colors.reset}\n`)
 	console.log(" ".repeat((100 - 16) / 2) + "* By Mari-chan *\n\n");
 	
 	const len = texts[1].length-31
@@ -653,131 +680,200 @@ function longestString(arr) {
 
 async function menu(client) {
 	const config = require("./files/config.json");
-	const color = config.color ? null : randomColor()
+	const color = config.color ? null : randomColor();
 
 	const principalOptions = [
-		"[01]settings          [02]discord tools          [03]files manager          [04]tips",
-		"[05]api tools         [06]architecture           [07]discord server         [00]restart"
+		"[01]settings menu        [02]tools menu        [03]files menu        [04]support",
+		"[06]hardware                                                         [00]restart"
 	];
 	const principalPhrase = "Select an option";
-	await panel(client, principalOptions, color, `${color ? color : randomColor()}->${colors.reset} ${principalPhrase} ${color ? color : randomColor()}<-${colors.reset}`, principalPhrase.length+6);
-	await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async a => {
-		switch (a) {
+
+	await panel(client, principalOptions, color, `${color ? color : randomColor()}->${colors.reset} ${principalPhrase} ${color ? color : randomColor()}<-${colors.reset}`, principalPhrase.length + 6);
+	const a = await question(`${color ? color : randomColor()}->${colors.reset} `);
+
+	switch (a) {
+		case '1':
+			await configMenu(client, color);
+			break;
+		case '2':
+			await discordToolMenu(client, color);
+			break;
+		case '3':
+		case '4':
+		case '5':
+			await menu(client);
+			break;
+		case '0':
+			restart(client);
+			break;
+		default:
+			await menu(client);
+	}
+
+	return color;
+}
+
+async function configMenu(client, color) {
+	const config = require("./files/config.json");
+	const configOptions = ["[01]set prefix        [02]set color        [03]set token        [00]back"];
+	const configPhrase = "Customize the settings";
+
+	await panel(client, configOptions, color, `${color ? color : randomColor()}->${colors.reset} ${configPhrase} ${color ? color : randomColor()}<-${colors.reset}`, configPhrase.length + 6);
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async (b) => {
+		switch (b) {
 			case '1':
-				async function configMenu(){
-					const configOptions = ["[01]prefix settings          [02]color settings          [03]token swap          [00]back"];
-					const configPhrase = "Customize the settings";
-					await panel(client, configOptions, color, `${color ? color : randomColor()}->${colors.reset} ${configPhrase} ${color ? color : randomColor()}<-${colors.reset}`, configPhrase.length+6);
-					await rl.question(`${color ? color : randomColor()}->${colors.reset} `, async b => {
-						switch (b) {
-							case '1':
-								async function prefixMenu(){
-									const prefixOptions = ["[00]back"];
-									const prefixPhrase = "Enter a new prefix";
-									await panel(client, prefixOptions, color, `${color ? color : randomColor()}->${colors.reset} ${prefixPhrase} ${color ? color : randomColor()}<-${colors.reset}`, prefixPhrase.length+6);
-									await rl.question(`${color ?color: randomColor()}-> ${colors.reset}`, async c => {
-										if(c === '0')
-											configMenu();
-										else {
-											config.prefix = c;
-											fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (e) => {
-												if (e) errConsole(`Error file: ${e}`);
-											})
-											menu(client);
-										}
-									})
-								}
-								prefixMenu()
-								break;
-							case '2':
-								async function colorMenu(){
-									const colorOptions = ["[01]colors list          [00]back"];
-									const colorPhrase = "Enter a new color";
-									await panel(client, colorOptions, color, `${color ? color:randomColor()}->${colors.reset} ${colorPhrase} ${color?color:randomColor()}<-${colors.reset}`, colorPhrase.length+6);
-									await rl.question(`${color?color:randomColor()}-> ${colors.reset}`, async c => {
-										if(c === '0')
-											configMenu();
-										else if (c === '1') {
-											await colorMenu();
-											await sysConsole(`${Object.keys(colors.fg).map(c => `${colors.fg[c]}${c}${colors.reset}`)},random${colors.reset},${color ? color : randomColor()}${randomColor()}r${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
-										} else if (Object.keys(colors.fg).map(k => k.toUpperCase()).includes(c.toUpperCase()) || (c.toUpperCase() === "RAINBOW") || (c.toUpperCase() === "RANDOM")) {
-											config.color = c.toUpperCase() === "RANDOM"?"":c;
-											fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (e) => {
-												if (e) errConsole(`Error file ${e}`);
-											})
-											menu(client);
-										} else
-											colorMenu();
-									})
-								}
-								colorMenu()
-								break;
-							case '3':
-								config.token = "";
-								fs.writeFile('./files/config.json', JSON.stringify(config, null, 2), (err) => {
-									if (err) errConsole(`Error file: ${err}`);
-								})
-								discordConnect();
-								break;
-							case '0':
-								menu(client);
-								break;
-							default:
-								configMenu();
-						}
-					})
-				}
-				configMenu();
+				await prefixMenu(client, color);
 				break;
 			case '2':
-				async function discordToolMenu() {
-					const discordToolOptions = [
-						"[01]token spammer          [02]client manager          [03]discord infos          [04]automatic tools",
-						"[05]token checker          [06]backup tools            [00]back"
-					];
-					const discordToolPhrase = "Have fun with my discord tools";
-					await panel(client, discordToolOptions, color, `${color ? color:randomColor()}->${colors.reset} ${discordToolPhrase} ${color?color:randomColor()}<-${colors.reset}`, discordToolPhrase.length+6);
-					await rl.question(`${color?color:randomColor()}->${colors.reset} `, async (b) => {
-						switch (b) {
-							case '1':
-								discordToolMenu();
-								break;
-							case '2':
-								discordToolMenu();
-								break;
-							case '3':
-								discordToolMenu();
-								break;
-							case '4':
-								discordToolMenu();
-								break;
-							case '0':
-								menu(client);
-								break;
-							default:
-								toolMenu();
-						}
-					})
-				}
-				discordToolMenu();
+				await colorMenu(client, color);
 				break;
 			case '3':
-				menu(client);
-				break;
-			case '4':
-				menu(client);
-				break;
-			case '5':
-				menu(client);
+				config.token = "";
+				fs.writeFileSync('./files/config.json', JSON.stringify(config, null, 2));
+				discordConnect();
 				break;
 			case '0':
-				restart(client);
+				await menu(client);
 				break;
 			default:
-				menu(client);
+				await configMenu(client, color);
+		}
+	});
+}
+
+async function prefixMenu(client, color) {
+	const config = require("./files/config.json");
+	const prefixOptions = ["[00]back"];
+	const prefixPhrase = "Enter a new prefix";
+
+	await panel(client, prefixOptions, color, `${color ? color : randomColor()}->${colors.reset} ${prefixPhrase} ${color ? color : randomColor()}<-${colors.reset}`, prefixPhrase.length + 6);
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async (c) => {
+		if (c === '0') {
+			await configMenu(client, color);
+		} else {
+			config.prefix = c;
+			fs.writeFileSync('./files/config.json', JSON.stringify(config, null, 2));
+			await menu(client);
+		}
+	});
+}
+
+async function colorMenu(client, color) {
+	const config = require("./files/config.json");
+	const colorOptions = ["[01]colors list        [00]back"];
+	const colorPhrase = "Enter a new color";
+
+	await panel(client, colorOptions, color, `${color ? color : randomColor()}->${colors.reset} ${colorPhrase} ${color ? color : randomColor()}<-${colors.reset}`, colorPhrase.length + 6);
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async (c) => {
+		if (c === '0') {
+			await configMenu(client, color);
+		} else if (c === '1') {
+			await colorMenu(client, color);
+			await sysConsole(`${Object.keys(colors.fg).map(c => `${colors.fg[c]}${c}${colors.reset}`)},random${colors.reset},${color ? color : randomColor()}${randomColor()}r${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
+		} else if (Object.keys(colors.fg).map(k => k.toUpperCase()).includes(c.toUpperCase()) || c.toUpperCase() === "RAINBOW" || c.toUpperCase() === "RANDOM") {
+			config.color = c.toUpperCase() === "RANDOM" ? "" : c;
+			fs.writeFileSync('./files/config.json', JSON.stringify(config, null, 2));
+			await menu(client);
+		} else {
+			await colorMenu(client, color);
+			await errConsole(`invalid color\n${color?color:randomColor()}->${colors.reset} `)
 		}
 	})
-	return color;
+}
+
+async function discordToolMenu(client, color, text = null) {
+	const backups = require("./files/backups.json");
+	const discordToolOptions = [
+		"[01]check tokens        [02]add tokens        [03]join tokens        [04]leave tokens",
+		"[05]spam  tokens        [06]client manager    [07]backup tools       [08]infos",
+		"[09]webhook tools                                                    [00]back"
+	];
+	const discordToolPhrase = text?text:"Have fun with my discord tools";
+
+	await panel(client, discordToolOptions, color, `${color ? color : randomColor()}->${colors.reset} ${discordToolPhrase} ${color ? color : randomColor()}<-${colors.reset}`, discordToolPhrase.length + 6);
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async b => {
+		switch (b) {
+			case '1':
+				await tokenCheck(client, color);
+				break;
+			case '2':
+				await addToken(client, color);
+				break;
+			case '3':
+				await joinTokens(client, color);
+				break;
+			case '0':
+				await menu(client);
+				break;
+			default:
+				await discordToolMenu(client, color);
+		}
+	});
+}
+
+async function joinTokens(client, color){
+	const joinOptions = ["[00]back"];
+	const joinPhrase = "Paste the ID of the server to join";
+
+	await panel(client, joinOptions, color, `${color ? color : randomColor()}->${colors.reset} ${joinPhrase} ${color ? color : randomColor()}<-${colors.reset}`, joinPhrase.length+6);
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async s => {
+
+	})
+}
+
+async function tokenCheck(client, color) {
+	const data = fs.readFileSync('./files/tokens.txt', 'utf8');
+	const list = [];
+
+	for (const t of data.split("\n")) {
+		if (!list.includes(t)) {
+			const res = await fetch(`https://discord.com/api/v9/users/@me`, {
+				method: 'GET',
+				headers: {
+					"authorization": t,
+					"Content-Type": "application/json"
+				}
+			});
+
+			if (res.ok) {
+				okConsole(`${colors.fg.lightGreen}${t}${colors.reset}`);
+				list.push(t);
+			} else {
+				errConsole(`${colors.fg.lightRed}${t}${colors.reset}`);
+			}
+		}
+	}
+
+	fs.writeFileSync('./files/tokens.txt', list.join("\n"), 'utf8');
+	await discordToolMenu(client, color);
+	await sysConsole(`${list.length} token${list.length>1?"s":""} saved.\n${color?color:randomColor()}->${colors.reset} `);
+}
+
+async function addToken(client, color) {
+	const tokenOptions = ["[0]back"];
+	const tokenPhrase = "Paste your list of tokens and press Enter twice";
+
+	await panel(client, tokenOptions, color, `${color ? color : randomColor()}->${colors.reset} ${tokenPhrase} ${color ? color : randomColor()}<-${colors.reset}`, tokenPhrase.length + 6);
+
+	const tokens = [];
+	let rl = readline.createInterface({
+		input: process.stdin,
+		output: process.stdout
+	});
+	process.stdout.write(`${color ? color : randomColor()}->${colors.reset} `)
+	rl.on("line", (i) => {
+		if (i === "0") {
+			rl.close();
+			discordToolMenu(client, color);
+		}
+		else if (i.trim() === "") {
+			fs.appendFileSync('./files/tokens.txt', `\n${tokens.join("\n")}`);
+			rl.close()
+			discordToolMenu(client, color);
+		} else {
+			tokens.push(i);
+		}
+	})
 }
 
 // discord functions
