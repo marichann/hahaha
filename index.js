@@ -12,7 +12,7 @@ const version = '1.0.0'
 
 const intervals = [];
 
-// colors
+// color
 const filesUser = [
 	{
 		name: "files/config.json",
@@ -43,6 +43,7 @@ const filesUser = [
 		content: JSON.stringify({})
 	}
 ]
+
 const colors = {
 	reset: "\x1b[0m",
 	bright: "\x1b[1m",
@@ -109,8 +110,8 @@ function randomColor(){
 		return colors.fg[Object.keys(colors.fg).find(k => k.toLowerCase() === config.color.toLowerCase())];
 	else
 		return randomColor;
-	
 }
+
 // console colors infos
 function okConsole(text) {
 	const now = getTime(Date.now());
@@ -119,6 +120,7 @@ function okConsole(text) {
 	if(fs.existsSync('./logs/logs.txt'))
 		fs.appendFileSync('./logs/logs.txt', `${formated} | ${text.replace(/\x1B\[[0-9;]*m/g, "") }\n`);
 }
+
 function errConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
@@ -126,6 +128,7 @@ function errConsole(text) {
 	if (fs.existsSync('./logs/logs.txt'))
 		fs.appendFileSync('./logs.txt', `${formated} | ${text.replace(/\x1B\[[0-9;]*m/g, "") }\n`);
 }
+
 function sysConsole(text) {
 	const now = getTime(Date.now());
 	const formated = `${now.hours}:${now.minutes}:${now.secondes}`;
@@ -142,14 +145,28 @@ function stopInterval(name) {
 		intervals.splice(i, 1);
 	}
 }
-function stopAllIntervals(){
-	intervals.forEach(i => clearInterval(i.interval));
-	intervals.length = 0;
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // realine question fonction
-
 function question(text, callback = null) {
 	let rl = readline.createInterface({
 		input: process.stdin,
@@ -170,6 +187,24 @@ function question(text, callback = null) {
 		});
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -202,8 +237,6 @@ function loading(msg, delay, line) {
 	}, delay);
 	return updateInterval;
 }
-
-// clear console
 function clearLine(x) {
 	readline.clearLine(process.stdout, 0);
 	readline.cursorTo(process.stdout, 0);
@@ -217,31 +250,25 @@ function clearConsole() {
 	process.stdout.write("\x1Bc");
 }
 
-// get cursor console
-function getCursor() {
-	return new Promise((resolve) => {
-		process.stdin.setRawMode(true);
-		process.stdin.resume();
-		process.stdin.setEncoding('utf8');
-		let buffer = '';
 
-		const onData = (data) => {
-			buffer += data;
-			if (buffer.includes('R')) {
-				process.stdin.pause();
-				process.stdin.setRawMode(false);
-				process.stdin.removeListener('data', onData);
-				const match = /\[(\d+);(\d+)R/.exec(buffer);
-				if (match) {
-					const [, row] = match;
-					resolve(parseInt(row, 10));
-				}
-			}
-		};
-		process.stdin.on('data', onData);
-		process.stdout.write('\u001b[6n');
-	});
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // restart 
 async function restart(client) {
@@ -256,6 +283,25 @@ async function restart(client) {
 		process.exit(code);
 	});
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // get github files
 function gitFiles(url) {
@@ -278,6 +324,25 @@ function gitFiles(url) {
 		}).on("error", reject);
 	})
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // installation modules
 async function chechModules(modules) {
@@ -322,6 +387,26 @@ async function goModules() {
 	} else
 		sysConsole(`${modules.length}/${modules.length} modules already installed.`);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // installation files
 async function checkFiles(files) {
@@ -399,6 +484,26 @@ async function goFiles() {
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // installation update
 function cleanDir() {
 	const files = fs.readdirSync(__dirname);
@@ -434,6 +539,25 @@ async function goUpdates() {
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // discord
@@ -570,6 +694,25 @@ async function discordConnect() {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // ascii
 async function textToAscii(text, font) {
 	const figlet = require("figlet");
@@ -593,6 +736,28 @@ async function textToAscii(text, font) {
 		);
 	});
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// os infos
 function plaform(platform) {
 	switch (platform) {
 		case 'aix':
@@ -640,6 +805,27 @@ async function osInfo(dir) {
 	}
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// panel
 async function panel(client, options, isColor, menu, length) {
 	const config = require("./files/config.json");
 	const dir = path.resolve(__dirname, "./");
@@ -678,6 +864,82 @@ function longestString(arr) {
 	return arr.reduce((a, b) => a.length >= b.length ? a : b, "");
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+async function getSessionId(token) {
+	const WebSocket = require("ws");
+	return new Promise((resolve, reject) => {
+		const ws = new WebSocket("wss://gateway.discord.gg/?v=9&encoding=json");
+
+		ws.on("message", (data) => {
+			const payload = JSON.parse(data);
+			const { t, op, d } = payload;
+
+			if (op === 10) {
+				ws.send(JSON.stringify({
+					op: 2,
+					d: {
+						token: token,
+						intents: 0,
+						properties: {
+							$os: "linux",
+							$browser: "my_library",
+							$device: "my_library"
+						}
+					}
+				}));
+			}
+
+			if (t === "READY") {
+				resolve(d.session_id);
+				ws.close();
+			}
+		});
+
+		ws.on("error", reject);
+		ws.on("close", () => reject("Connexion WebSocket fermée sans réponse."));
+	});
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// menus
 async function menu(client) {
 	const config = require("./files/config.json");
 	const color = config.color ? null : randomColor();
@@ -748,9 +1010,9 @@ async function prefixMenu(client, color) {
 
 	await panel(client, prefixOptions, color, `${color ? color : randomColor()}->${colors.reset} ${prefixPhrase} ${color ? color : randomColor()}<-${colors.reset}`, prefixPhrase.length + 6);
 	await question(`${color ? color : randomColor()}->${colors.reset} `, async (c) => {
-		if (c === '0') {
+		if (c === '0')
 			await configMenu(client, color);
-		} else {
+		else {
 			config.prefix = c;
 			fs.writeFileSync('./files/config.json', JSON.stringify(config, null, 2));
 			await menu(client);
@@ -765,18 +1027,18 @@ async function colorMenu(client, color) {
 
 	await panel(client, colorOptions, color, `${color ? color : randomColor()}->${colors.reset} ${colorPhrase} ${color ? color : randomColor()}<-${colors.reset}`, colorPhrase.length + 6);
 	await question(`${color ? color : randomColor()}->${colors.reset} `, async (c) => {
-		if (c === '0') {
+		if (c === '0')
 			await configMenu(client, color);
-		} else if (c === '1') {
+		else if (c === '1') {
 			await colorMenu(client, color);
-			await sysConsole(`${Object.keys(colors.fg).map(c => `${colors.fg[c]}${c}${colors.reset}`)},random${colors.reset},${color ? color : randomColor()}${randomColor()}r${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
+			sysConsole(`${Object.keys(colors.fg).map(c => `${colors.fg[c]}${c}${colors.reset}`)},random${colors.reset},${color ? color : randomColor()}${randomColor()}r${randomColor()}a${randomColor()}i${randomColor()}n${randomColor()}b${randomColor()}o${randomColor()}w${colors.reset}\n${color ? color : randomColor()}->${colors.reset} `);
 		} else if (Object.keys(colors.fg).map(k => k.toUpperCase()).includes(c.toUpperCase()) || c.toUpperCase() === "RAINBOW" || c.toUpperCase() === "RANDOM") {
 			config.color = c.toUpperCase() === "RANDOM" ? "" : c;
 			fs.writeFileSync('./files/config.json', JSON.stringify(config, null, 2));
 			await menu(client);
 		} else {
 			await colorMenu(client, color);
-			await errConsole(`invalid color\n${color?color:randomColor()}->${colors.reset} `)
+			errConsole(`invalid color\n${color?color:randomColor()}->${colors.reset} `)
 		}
 	})
 }
@@ -813,10 +1075,59 @@ async function discordToolMenu(client, color, text = null) {
 
 async function joinTokens(client, color){
 	const joinOptions = ["[00]back"];
-	const joinPhrase = "Paste the ID of the server to join";
+	const joinPhrase = "Paste the invite of the server to join";
+	const randomuseragent = require("random-useragent");
 
 	await panel(client, joinOptions, color, `${color ? color : randomColor()}->${colors.reset} ${joinPhrase} ${color ? color : randomColor()}<-${colors.reset}`, joinPhrase.length+6);
-	await question(`${color ? color : randomColor()}->${colors.reset} `, async s => {
+	await question(`${color ? color : randomColor()}->${colors.reset} `, async c => {
+		if (c === "0")
+			await discordToolMenu();
+		else if (c.match(/discord\.gg\/([a-zA-Z0-9]+)/)) {
+			const data = fs.readFileSync('./files/tokens.txt', 'utf8');
+			const list = []
+			for (const t of data.split("\n")) {
+				const session = await getSessionId(t)
+				const r = await fetch(`https://canary.discord.com/api/v9/invites/${c.match(/discord\.gg\/([a-zA-Z0-9]+)/)[1]}`, {
+					method: 'POST',
+					headers: {
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0',
+						'Accept': '*/*',
+						'Accept-Language': 'fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3',
+						'Accept-Encoding': 'gzip, deflate, br',
+						'Content-Type': 'application/json',
+						'X-Context-Properties': 'eyJsb2NhdGlvbiI6IkpvaW4gR3VpbGQiLCJsb2NhdGlvbl9ndWlsZF9pZCI6Ijk4OTkxOTY0NTY4MTE4ODk1NCIsImxvY2F0aW9uX2NoYW5uZWxfaWQiOiI5OTAzMTc0ODgxNzg4NjgyMjQiLCJsb2NhdGlvbl9jaGFubmVsX3R5cGUiOjB9',
+						'Authorization': t,
+						'X-Super-Properties': 'eyJvcyI6IldpbmRvd3MiLCJicm93c2VyIjoiRmlyZWZveCIsImRldmljZSI6IiIsInN5c3RlbV9sb2NhbGUiOiJmciIsImJyb3dzZXJfdXNlcl9hZ2VudCI6Ik1vemlsbGEvNS4wIChXaW5kb3dzIE5UIDEwLjA7IFdpbjY0OyB4NjQ7IHJ2OjEwMi4wKSBHZWNrby8yMDEwMDEwMSBGaXJlZm94LzEwMi4wIiwiYnJvd3Nlcl92ZXJzaW9uIjoiMTAyLjAiLCJvc192ZXJzaW9uIjoiMTAiLCJyZWZlcnJlciI6IiIsInJlZmVycmluZ19kb21haW4iOiIiLCJyZWZlcnJlcl9jdXJyZW50IjoiIiwicmVmZXJyaW5nX2RvbWFpbl9jdXJyZW50IjoiIiwicmVsZWFzZV9jaGFubmVsIjoic3RhYmxlIiwiY2xpZW50X2J1aWxkX251bWJlciI6MTM2MjQwLCJjbGllbnRfZXZlbnRfc291cmNlIjpudWxsfQ==',
+						'X-Discord-Locale': 'en-US',
+						'X-Debug-Options': 'bugReporterEnabled',
+						'Origin': 'https://discord.com',
+						'DNT': '1',
+						'Connection': 'keep-alive',
+						'Referer': 'https://discord.com',
+						'Cookie': '__dcfduid=21183630021f11edb7e89582009dfd5e; __sdcfduid=21183631021f11edb7e89582009dfd5ee4936758ec8c8a248427f80a1732a58e4e71502891b76ca0584dc6fafa653638; locale=en-US',
+						'Sec-Fetch-Dest': 'empty',
+						'Sec-Fetch-Mode': 'cors',
+						'Sec-Fetch-Site': 'same-origin',
+						'TE': 'trailers',
+					},
+					body: JSON.stringify({ session_id:  session})
+				})
+				if(r.ok) {
+					okConsole(`${colors.fg.lightGreen}${t}${colors.reset} joined.`)
+					list.push(t);
+					console.log(r);
+				} else {
+					errConsole(`${colors.fg.lightRed}${t}${colors.reset} failed.`);
+					console.log(r);
+				}
+			}
+			return;
+			await discordToolMenu(client, color);
+			sysConsole(`${list.length} token${list.length>1?"s":""} joined.\n${color?color:randomColor()}->${colors.reset} `);
+		} else {
+			await joinTokens(client, color);
+			errConsole(`invalid discord invite\n${color?color:randomColor()}->${colors.reset} `);
+		}
 
 	})
 }
@@ -827,7 +1138,7 @@ async function tokenCheck(client, color) {
 
 	for (const t of data.split("\n")) {
 		if (!list.includes(t)) {
-			const res = await fetch(`https://discord.com/api/v9/users/@me`, {
+			const res = await fetch(`https://discord.com/api/v9/users/@me/affinities/guilds`, {
 				method: 'GET',
 				headers: {
 					"authorization": t,
@@ -846,7 +1157,7 @@ async function tokenCheck(client, color) {
 
 	fs.writeFileSync('./files/tokens.txt', list.join("\n"), 'utf8');
 	await discordToolMenu(client, color);
-	await sysConsole(`${list.length} token${list.length>1?"s":""} saved.\n${color?color:randomColor()}->${colors.reset} `);
+	sysConsole(`${list.length} token${list.length>1?"s":""} saved.\n${color?color:randomColor()}->${colors.reset} `);
 }
 
 async function addToken(client, color) {
@@ -876,6 +1187,26 @@ async function addToken(client, color) {
 	})
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // discord functions
 async function discordConnected(client) {
 	const Discord = require("discord.js-selfbot-v13");
@@ -888,10 +1219,30 @@ async function discordConnected(client) {
 	
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // starting
 async function executeFunctions() {
-	await clearConsole();
-	await intervals.push({ name: "start", interval: loading('Starting', 100, 0) });
+	clearConsole();
+	intervals.push({ name: "start", interval: loading('Starting', 100, 0) });
 	
 	await new Promise(resolve => setTimeout(resolve, 1000));
 	stopInterval("start");
@@ -908,7 +1259,7 @@ async function executeFunctions() {
 	await new Promise(resolve => setTimeout(resolve, 2000));
 	stopInterval("modules");
 	clearLine(3);
-	await intervals.push(({ name: "launch", interval: loading('Connecting', 100, 0)}));
+	intervals.push(({ name: "launch", interval: loading('Connecting', 100, 0)}));
 	const client = await discordConnect();
 
 	await discordConnected(client);
